@@ -1,45 +1,20 @@
-# Supabase Backup & Restore Tool
+# Supabase DevOps Toolkit
 
-A comprehensive, portable bash script for backing up, restoring, and managing Supabase databases with smart role bootstrap functionality. This tool is designed to work seamlessly with both local and cloud Supabase instances, providing a complete workflow for database migration and seeding.
+A comprehensive collection of bash scripts for managing Supabase projects across development, staging, and production environments. This toolkit provides essential tools for database management, edge function deployment, and project migration workflows.
 
-## 🚀 Features
+## 🛠️ Tools Included
 
-- **Complete Database Operations**: Backup, restore, baseline, and seed generation
-- **Smart Role Management**: Automatic detection and bootstrap of custom database roles
-- **Local & Cloud Support**: Works with both local development and production databases
-- **macOS Safe**: Optimized for macOS environments with proper dependency handling
-- **Idempotent Operations**: Safe to run multiple times without conflicts
-- **Flexible Filtering**: Exclude specific schemas, tables, or data as needed
-- **Archive Management**: Automatic migration archiving with optional cleanup
+### 1. Database Management (`supabase_backup.sh`)
+Complete database backup, restore, and migration management with smart role bootstrap functionality.
 
-## 📋 Requirements
+### 2. Edge Function Management (`pull_edge_functions.sh`)
+Download and manage Supabase Edge Functions from remote projects with secret template generation.
 
-- **Supabase CLI**: [Installation Guide](https://supabase.com/docs/guides/cli)
-- **PostgreSQL Client (psql)**: For direct database operations
-- **Perl**: Included by default on macOS, required for advanced text processing
-- **Bash**: Unix-like shell environment
+## 🚀 Quick Start
 
-## 🏗️ Project Structure
-
-The script automatically creates and manages the following directory structure:
-
-```
-supabase/
-├── backups/           # Database backup files
-│   ├── roles.sql     # Database roles
-│   ├── schema.sql    # Database schema
-│   └── data.sql      # Database data
-├── migrations/        # Generated migrations
-│   └── 00000000000000_roles_bootstrap.sql  # Auto-generated role bootstrap
-└── seed.sql          # Generated seed file
-```
-
-## 📖 Usage
-
-### Basic Commands
-
+### Database Operations
 ```bash
-# Clone a remote database to local development
+# Clone production database to local development
 ./supabase_backup.sh clone-local --db-url <REMOTE_DB_URL>
 
 # Backup a database
@@ -47,175 +22,120 @@ supabase/
 
 # Restore to local database
 ./supabase_backup.sh restore --local
-
-# Restore to remote database
-./supabase_backup.sh restore --target-db-url <TARGET_DB_URL>
-
-# Create baseline migration from local database
-./supabase_backup.sh baseline
-
-# Generate seed file from database
-./supabase_backup.sh make-seed --db-url <DB_URL>
 ```
 
-### Advanced Usage
-
-#### Clone Local (Complete Workflow)
-
-The `clone-local` command performs a complete workflow:
-1. **Backup** the remote database
-2. **Restore** to local development environment
-3. **Create baseline** migration
-4. **Generate seed** file
-5. **Bootstrap roles** automatically
-
+### Edge Function Operations
 ```bash
-# Basic clone with automatic role detection
-./supabase_backup.sh clone-local --db-url postgresql://user:pass@host:port/db
+# Download all edge functions from a project
+./pull_edge_functions.sh --project-ref <PROJECT_REF>
 
-# Clone with specific roles
-./supabase_backup.sh clone-local --db-url <DB_URL> --roles admin,editor,viewer
+# Download specific functions
+./pull_edge_functions.sh --project-ref <PROJECT_REF> --names auth,webhook
 
-# Clone with verification
-./supabase_backup.sh clone-local --db-url <DB_URL> --verify-reset
-
-# Clone with archive preservation
-./supabase_backup.sh clone-local --db-url <DB_URL> --keep-archive
-
-# Non-interactive mode
-./supabase_backup.sh clone-local --db-url <DB_URL> --yes
+# Download with secret templates
+./pull_edge_functions.sh --project-ref <PROJECT_REF> --export-secrets
 ```
 
-#### Backup Operations
+## 📋 Requirements
 
-```bash
-# Basic backup
-./supabase_backup.sh backup --db-url <DB_URL>
+- **Supabase CLI**: [Installation Guide](https://supabase.com/docs/guides/cli)
+- **PostgreSQL Client (psql)**: For direct database operations
+- **Perl**: Included by default on macOS, required for advanced text processing
+- **Bash**: Unix-like shell environment
+- **jq** (optional): For enhanced JSON parsing in edge function tool
 
-# The backup creates three files:
-# - roles.sql: Database roles and permissions
-# - schema.sql: Database structure (tables, views, functions, etc.)
-# - data.sql: Database content
+## 🏗️ Project Structure
+
+```
+supabase/
+├── backups/           # Database backup files (auto-created)
+│   ├── roles.sql     # Database roles
+│   ├── schema.sql    # Database schema
+│   └── data.sql      # Database data
+├── migrations/        # Generated migrations (auto-created)
+│   └── 00000000000000_roles_bootstrap.sql  # Auto-generated role bootstrap
+├── functions/         # Edge functions (auto-created)
+│   ├── function1/
+│   │   ├── index.ts
+│   │   └── .env.example
+│   └── function2/
+└── seed.sql          # Generated seed file (auto-created)
 ```
 
-#### Restore Operations
+## 📖 Detailed Documentation
 
-```bash
-# Restore to local database (recommended for development)
-./supabase_backup.sh restore --local
+### Database Management Tool
 
-# Restore to local with custom options
-./supabase_backup.sh restore --local --no-local-safe --no-strip-owners
+The `supabase_backup.sh` script provides comprehensive database operations:
 
-# Restore to remote database
-./supabase_backup.sh restore --target-db-url <TARGET_DB_URL>
+- **Complete Database Operations**: Backup, restore, baseline, and seed generation
+- **Smart Role Management**: Automatic detection and bootstrap of custom database roles
+- **Local & Cloud Support**: Works with both local development and production databases
+- **macOS Safe**: Optimized for macOS environments with proper dependency handling
+- **Idempotent Operations**: Safe to run multiple times without conflicts
 
-# Restore with custom options
-./supabase_backup.sh restore --target-db-url <TARGET_DB_URL> --no-strip-grantors
-```
+[📖 Full Database Tool Documentation](./docs/database-tool.md)
 
-#### Baseline Migration
+### Edge Function Management Tool
 
-```bash
-# Create baseline from local database
-./supabase_backup.sh baseline
+The `pull_edge_functions.sh` script manages Supabase Edge Functions:
 
-# Create baseline for specific schemas
-./supabase_backup.sh baseline --schemas public,auth
+- **Function Download**: Pull edge functions from remote Supabase projects
+- **Secret Management**: Generate `.env.example` templates from project secrets
+- **Flexible Output**: Specify custom output directories
+- **Selective Download**: Download specific functions by name
+- **Overwrite Protection**: Safe overwrite options with confirmation
 
-# Create baseline without archiving existing migrations
-./supabase_backup.sh baseline --no-archive
-
-# Create baseline and keep archive
-./supabase_backup.sh baseline --keep-archive
-```
-
-#### Seed Generation
-
-```bash
-# Generate seed from database
-./supabase_backup.sh make-seed --db-url <DB_URL>
-
-# Generate seed for specific schemas
-./supabase_backup.sh make-seed --db-url <DB_URL> --schemas public
-
-# Generate seed excluding auth users
-./supabase_backup.sh make-seed --db-url <DB_URL> --no-auth-users
-
-# Generate seed excluding specific tables
-./supabase_backup.sh make-seed --db-url <DB_URL> --exclude public.sensitive_table
-```
-
-## ⚙️ Configuration Options
-
-### Global Flags
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--yes`, `--assume-yes` | Non-interactive mode | `false` |
-| `--roles r1,r2` | Force specific roles for bootstrap | `[]` |
-
-### Restore Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--local` | Restore to local Supabase instance | `false` |
-| `--target-db-url` | Target database URL for cloud restore | `""` |
-| `--local-safe` | Enable local-safe mode (filters managed schemas) | `true` |
-| `--no-local-safe` | Disable local-safe mode | - |
-| `--strip-owners` | Remove OWNER TO clauses | `true` |
-| `--no-strip-owners` | Preserve OWNER TO clauses | - |
-| `--strip-grantors` | Remove GRANTED BY clauses | `true` |
-| `--no-strip-grantors` | Preserve GRANTED BY clauses | - |
-
-### Baseline Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--schemas` | Schemas to include in baseline | `public` |
-| `--archive-existing` | Archive existing migrations | `true` |
-| `--no-archive` | Don't archive existing migrations | - |
-| `--keep-archive` | Keep archived migrations | `false` |
-
-### Seed Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--schemas` | Schemas to include in seed | `public` |
-| `--include-auth-users` | Include auth.users in seed | `true` |
-| `--no-auth-users` | Exclude auth.users from seed | - |
-| `--exclude` | Exclude specific schema.table | `[]` |
+[📖 Full Edge Function Tool Documentation](./docs/edge-functions-tool.md)
 
 ## 🔧 Smart Features
 
-### Role Bootstrap
+### Database Tool Features
+- **Role Bootstrap**: Automatic detection and creation of custom roles
+- **Local-Safe Mode**: Filters managed schemas for local development
+- **Idempotent Operations**: Safe repeated execution
+- **Transaction Safety**: All operations use proper transaction handling
 
-The script automatically detects custom roles from:
-- Existing migrations
-- Database grants and policies
-- Forced roles via `--roles` flag
+### Edge Function Tool Features
+- **Robust Parsing**: Handles both JSON and table output formats
+- **Secret Templates**: Automatically generates `.env.example` files
+- **Function Discovery**: Lists all available functions in a project
+- **Flexible Deployment**: Supports custom output directories
 
-It creates a bootstrap migration (`00000000000000_roles_bootstrap.sql`) that ensures roles exist before other migrations run.
+## 📝 Common Workflows
 
-### Local-Safe Mode
+### Development Environment Setup
+```bash
+# 1. Clone production database to local
+./supabase_backup.sh clone-local --db-url $PROD_DB_URL --yes
 
-When restoring to local development:
-- Filters out managed Supabase schemas (`auth`, `storage`, `realtime`, etc.)
-- Prevents conflicts with local Supabase instance
-- Maintains data integrity
+# 2. Download edge functions
+./pull_edge_functions.sh --project-ref $PROJECT_REF --export-secrets
 
-### Idempotent Operations
+# 3. Start local development
+supabase start
+```
 
-- **Role Creation**: Uses `DO $$BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END$$;`
-- **Sequence Values**: Safe `setval` operations with existence checks
-- **Migration Archiving**: Preserves existing migrations in timestamped archives
+### Production Deployment
+```bash
+# 1. Backup current production database
+./supabase_backup.sh backup --db-url $PROD_DB_URL
 
-### Data Safety
+# 2. Deploy edge functions
+supabase functions deploy --project-ref $PROJECT_REF
 
-- **Transaction Safety**: All operations use `--single-transaction`
-- **Error Handling**: Stops on first error with `ON_ERROR_STOP=1`
-- **Replication Role**: Uses `session_replication_role = replica` for data loading
-- **COPY Block Detection**: Ensures INSERT statements for transaction safety
+# 3. Apply database migrations
+supabase db push --project-ref $PROJECT_REF
+```
+
+### Staging Environment
+```bash
+# 1. Restore production backup to staging
+./supabase_backup.sh restore --target-db-url $STAGING_DB_URL
+
+# 2. Deploy edge functions to staging
+supabase functions deploy --project-ref $STAGING_PROJECT_REF
+```
 
 ## 🛠️ Troubleshooting
 
@@ -228,12 +148,15 @@ When restoring to local development:
    
    # Install PostgreSQL client (macOS)
    brew install postgresql
+   
+   # Install jq for enhanced JSON parsing (optional)
+   brew install jq
    ```
 
 2. **Permission Issues**
    ```bash
-   # Make script executable
-   chmod +x supabase_backup.sh
+   # Make scripts executable
+   chmod +x supabase_backup.sh pull_edge_functions.sh
    ```
 
 3. **Database Connection Issues**
@@ -241,58 +164,16 @@ When restoring to local development:
    - Check network connectivity
    - Ensure database is accessible
 
-4. **Role Bootstrap Failures**
-   - Check for role name conflicts
-   - Verify role permissions in source database
-   - Use `--no-role-bootstrap` to skip automatic role creation
-
 ### Debug Mode
 
-For troubleshooting, you can run the script with bash debugging:
+For troubleshooting, you can run scripts with bash debugging:
 
 ```bash
+# Database tool debugging
 bash -x ./supabase_backup.sh <command> [options]
-```
 
-## 📝 Examples
-
-### Development Workflow
-
-```bash
-# 1. Clone production database to local
-./supabase_backup.sh clone-local --db-url $PROD_DB_URL --yes
-
-# 2. Make changes to local database
-
-# 3. Create new migration
-supabase db diff -f new_feature
-
-# 4. Test with reset
-supabase db reset
-
-# 5. Deploy to production
-supabase db push
-```
-
-### Production Backup
-
-```bash
-# Create backup of production database
-./supabase_backup.sh backup --db-url $PROD_DB_URL
-
-# Backup files are created in supabase/backups/
-ls supabase/backups/
-# roles.sql  schema.sql  data.sql
-```
-
-### Staging Setup
-
-```bash
-# Restore production backup to staging
-./supabase_backup.sh restore --target-db-url $STAGING_DB_URL
-
-# Create baseline for staging
-./supabase_backup.sh baseline --schemas public,auth
+# Edge function tool debugging
+bash -x ./pull_edge_functions.sh --project-ref <REF> --debug
 ```
 
 ## 🔒 Security Considerations
@@ -300,16 +181,18 @@ ls supabase/backups/
 - **Database URLs**: Never commit database URLs with credentials to version control
 - **Seed Files**: Add `supabase/seed.sql` to `.gitignore` if it contains sensitive data
 - **Backup Files**: Consider encrypting backup files for sensitive data
+- **Secret Templates**: `.env.example` files contain only keys, not values
 - **Role Permissions**: Review custom roles and their permissions before bootstrap
 
 ## 🤝 Contributing
 
-This script is designed to be portable and maintainable. When contributing:
+This toolkit is designed to be portable and maintainable. When contributing:
 
 1. Test on both macOS and Linux environments
 2. Ensure all operations remain idempotent
 3. Add appropriate error handling
 4. Update documentation for new features
+5. Follow the existing code style and patterns
 
 ## 📄 License
 
@@ -317,4 +200,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-**Note**: This script is designed for development and staging environments. For production backups, consider using Supabase's built-in backup features or database-specific backup solutions.
+**Note**: These tools are designed for development and staging environments. For production backups, consider using Supabase's built-in backup features or database-specific backup solutions.
