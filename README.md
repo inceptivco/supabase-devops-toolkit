@@ -43,6 +43,7 @@ Download and manage Supabase Edge Functions from remote projects with automatic 
 
 - **Supabase CLI**: [Installation Guide](https://supabase.com/docs/guides/cli)
 - **PostgreSQL Client (psql)**: For direct database operations
+- **libpq**: PostgreSQL client library for database connectivity
 - **Perl**: Included by default on macOS, required for advanced text processing
 - **Bash**: Unix-like shell environment
 - **jq** (optional): For enhanced JSON parsing in edge function tool
@@ -154,7 +155,7 @@ supabase functions deploy --project-ref $STAGING_PROJECT_REF
    # Install Supabase CLI
    npm install -g supabase
    
-   # Install PostgreSQL client (macOS)
+   # Install PostgreSQL client and libpq (macOS)
    brew install postgresql
    
    # Install jq for enhanced JSON parsing (optional)

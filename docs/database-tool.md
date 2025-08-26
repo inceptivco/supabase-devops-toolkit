@@ -236,6 +236,14 @@ ls supabase/backups/
 ./supabase_backup.sh baseline --schemas public,auth
 ```
 
+## 📋 Requirements
+
+- **Supabase CLI**: [Installation Guide](https://supabase.com/docs/guides/cli)
+- **PostgreSQL Client (psql)**: For direct database operations
+- **libpq**: PostgreSQL client library for database connectivity
+- **Bash**: Unix-like shell environment
+- **Perl**: Included by default on macOS, required for advanced text processing
+
 ## 🛠️ Troubleshooting
 
 ### Common Issues
@@ -245,7 +253,7 @@ ls supabase/backups/
    # Install Supabase CLI
    npm install -g supabase
    
-   # Install PostgreSQL client (macOS)
+   # Install PostgreSQL client and libpq (macOS)
    brew install postgresql
    ```
 
