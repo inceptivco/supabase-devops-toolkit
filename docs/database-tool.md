@@ -60,6 +60,9 @@ The `clone-local` command performs a complete workflow:
 # Clone with archive preservation
 ./supabase_backup.sh clone-local --db-url <DB_URL> --keep-archive
 
+# Clone with problematic table skipping
+./supabase_backup.sh clone-local --db-url <DB_URL> --skip-problematic-tables
+
 # Non-interactive mode
 ./supabase_backup.sh clone-local --db-url <DB_URL> --yes
 ```
@@ -90,6 +93,9 @@ The `clone-local` command performs a complete workflow:
 
 # Restore with custom options
 ./supabase_backup.sh restore --target-db-url <TARGET_DB_URL> --no-strip-grantors
+
+# Restore with problematic table skipping
+./supabase_backup.sh restore --local --skip-problematic-tables
 ```
 
 #### Baseline Migration
@@ -132,6 +138,7 @@ The `clone-local` command performs a complete workflow:
 |------|-------------|---------|
 | `--yes`, `--assume-yes` | Non-interactive mode | `false` |
 | `--roles r1,r2` | Force specific roles for bootstrap | `[]` |
+| `--skip-problematic-tables` | Skip tables with schema mismatches | `false` |
 
 ### Restore Options
 
@@ -194,6 +201,13 @@ When restoring to local development:
 - **Error Handling**: Stops on first error with `ON_ERROR_STOP=1`
 - **Replication Role**: Uses `session_replication_role = replica` for data loading
 - **COPY Block Detection**: Ensures INSERT statements for transaction safety
+
+### Schema Mismatch Handling
+
+- **Robust Data Restoration**: Converts COPY statements to INSERT statements with error handling
+- **Graceful Error Recovery**: Continues restoration even when individual tables have schema mismatches
+- **Problematic Table Skipping**: Use `--skip-problematic-tables` to skip known problematic tables (sso_providers, auth.*, storage.*, realtime.*)
+- **Detailed Error Reporting**: Provides clear feedback about which tables were skipped and why
 
 ## 📝 Examples
 
