@@ -8,11 +8,23 @@ OVERWRITE=0
 YES=0
 EXPORT_SECRETS=0
 DEBUG=0
+FIX_EXISTING=0
 
 usage() {
   cat <<EOF
 Usage:
   $(basename "$0") --project-ref <ref> [--outdir <dir>] [--names foo,bar] [--overwrite] [--yes] [--export-secrets] [--debug]
+  $(basename "$0") --fix-existing [--outdir <dir>] [--debug]
+
+Options:
+  --project-ref <ref>    Supabase project reference (required for download)
+  --outdir <dir>         Output directory (default: supabase/functions)
+  --names foo,bar        Comma-separated list of function names to download
+  --overwrite            Overwrite existing local functions
+  --yes                  Skip confirmation prompts
+  --export-secrets       Create .env.example files with secret keys
+  --debug                Enable debug output
+  --fix-existing         Fix absolute path issues in existing functions (no download)
 EOF
 }
 
@@ -26,10 +38,107 @@ while [[ $# -gt 0 ]]; do
     --yes) YES=1; shift;;
     --export-secrets) EXPORT_SECRETS=1; shift;;
     --debug) DEBUG=1; shift;;
+    --fix-existing) FIX_EXISTING=1; shift;;
     -h|--help) usage; exit 0;;
     *) echo "Unknown arg: $1"; usage; exit 1;;
   esac
 done
+
+# Handle fix-existing mode
+if [[ $FIX_EXISTING -eq 1 ]]; then
+  echo "🔧 Fixing absolute path issues in existing functions..."
+  
+  # Function to fix absolute path issues in existing functions
+  fix_existing_paths() {
+    local fn_dir="$1"
+    local fn_name=$(basename "$fn_dir")
+    
+    if [[ ! -d "$fn_dir" ]]; then
+      return 0
+    fi
+    
+    echo "🔧 Processing '$fn_name'..."
+    
+    # Find all file: directories recursively
+    find "$fn_dir" -type d -name "file:*" | while read -r abs_path; do
+      echo "  🔍 Found absolute path: $abs_path"
+      
+      # Check if this is a file: path (with or without slash)
+      if [[ "$abs_path" =~ file: ]]; then
+        # Extract the relative path part from the file: directory structure
+        local relative_part=""
+        
+        # Find the actual supabase/functions path within the file: directory
+        local actual_path
+        actual_path=$(find "$abs_path" -type d -path "*/supabase/functions/*" | head -1)
+        
+        if [[ -n "$actual_path" ]]; then
+          # Extract everything after /supabase/functions/
+          relative_part=$(echo "$actual_path" | sed -E 's|.*/supabase/functions/(.*)|../\1|')
+          echo "  📂 Found actual path: $actual_path -> $relative_part"
+        fi
+        
+        if [[ -n "$relative_part" ]]; then
+          local target_dir="$fn_dir/$relative_part"
+          local target_parent=$(dirname "$target_dir")
+          
+          echo "  📁 Moving $abs_path -> $target_dir"
+          
+          # Create parent directory if it doesn't exist
+          mkdir -p "$target_parent"
+          
+          # Move the contents from absolute path to relative path
+          if [[ -d "$abs_path" ]]; then
+            # Find the actual files in the nested structure
+            local actual_files_dir
+            actual_files_dir=$(find "$abs_path" -type d -path "*/supabase/functions/*" | head -1)
+            
+            if [[ -n "$actual_files_dir" ]]; then
+              # Copy files from the actual location to the target
+              rsync -av "$actual_files_dir/" "$target_dir/" 2>/dev/null || cp -r "$actual_files_dir"/* "$target_dir/" 2>/dev/null || true
+              echo "  ✅ Moved successfully from $actual_files_dir"
+            else
+              # Fallback: copy everything
+              rsync -av "$abs_path/" "$target_dir/" 2>/dev/null || cp -r "$abs_path"/* "$target_dir/" 2>/dev/null || true
+              echo "  ✅ Moved successfully (fallback)"
+            fi
+            rm -rf "$abs_path"
+          fi
+        else
+          echo "  ⚠️  Could not extract relative path from: $abs_path"
+        fi
+      fi
+    done
+    
+    # Fix import statements in TypeScript files
+    find "$fn_dir" -name "*.ts" -type f | while read -r ts_file; do
+      if grep -q "file:/" "$ts_file" 2>/dev/null; then
+        echo "  📝 Fixing imports in $(basename "$ts_file")"
+        # Replace absolute file:/ paths with relative paths
+        sed -i.bak -E 's|file:/[^/]+/[^/]+/[^/]+/[^/]+/supabase/functions/|../|g' "$ts_file"
+        # Clean up backup files
+        rm -f "$ts_file.bak"
+      fi
+    done
+  }
+  
+  # Process all function directories
+  if [[ -d "$OUTDIR" ]]; then
+    for fn_dir in "$OUTDIR"/*; do
+      if [[ -d "$fn_dir" ]]; then
+        fix_existing_paths "$fn_dir"
+      fi
+    done
+  else
+    echo "❌ Functions directory not found: $OUTDIR"
+    exit 1
+  fi
+  
+  echo "✅ Absolute path fixes completed!"
+  exit 0
+fi
+
+# Normal mode requires project-ref
 [[ -n "$PROJECT_REF" ]] || { echo "❌ --project-ref is required"; usage; exit 1; }
 
 command -v supabase >/dev/null 2>&1 || { echo "❌ Install Supabase CLI"; exit 1; }
@@ -181,6 +290,80 @@ for f in "${ALL_FUNCS[@]}"; do echo "  • $f"; done
 
 confirm "Proceed?" || { echo "Aborted."; exit 1; }
 
+# Function to fix absolute path issues in downloaded functions
+fix_absolute_paths() {
+  local fn="$1"
+  local fn_dir="$OUTDIR/$fn"
+  
+  if [[ ! -d "$fn_dir" ]]; then
+    return 0
+  fi
+  
+  echo "🔧 Fixing absolute paths in '$fn'..."
+  
+  # Find all file: directories recursively
+  find "$fn_dir" -type d -name "file:*" | while read -r abs_path; do
+    echo "  🔍 Found absolute path: $abs_path"
+    
+    # Check if this is a file: path (with or without slash)
+    if [[ "$abs_path" =~ file: ]]; then
+      # Extract the relative path part from the file: directory structure
+      local relative_part=""
+      
+      # Find the actual supabase/functions path within the file: directory
+      local actual_path
+      actual_path=$(find "$abs_path" -type d -path "*/supabase/functions/*" | head -1)
+      
+      if [[ -n "$actual_path" ]]; then
+        # Extract everything after /supabase/functions/
+        relative_part=$(echo "$actual_path" | sed -E 's|.*/supabase/functions/(.*)|../\1|')
+        echo "  📂 Found actual path: $actual_path -> $relative_part"
+      fi
+      
+      if [[ -n "$relative_part" ]]; then
+        local target_dir="$fn_dir/$relative_part"
+        local target_parent=$(dirname "$target_dir")
+        
+        echo "  📁 Moving $abs_path -> $target_dir"
+        
+        # Create parent directory if it doesn't exist
+        mkdir -p "$target_parent"
+        
+                  # Move the contents from absolute path to relative path
+          if [[ -d "$abs_path" ]]; then
+            # Find the actual files in the nested structure
+            local actual_files_dir
+            actual_files_dir=$(find "$abs_path" -type d -path "*/supabase/functions/*" | head -1)
+            
+            if [[ -n "$actual_files_dir" ]]; then
+              # Copy files from the actual location to the target
+              rsync -av "$actual_files_dir/" "$target_dir/" 2>/dev/null || cp -r "$actual_files_dir"/* "$target_dir/" 2>/dev/null || true
+              echo "  ✅ Moved successfully from $actual_files_dir"
+            else
+              # Fallback: copy everything
+              rsync -av "$abs_path/" "$target_dir/" 2>/dev/null || cp -r "$abs_path"/* "$target_dir/" 2>/dev/null || true
+              echo "  ✅ Moved successfully (fallback)"
+            fi
+            rm -rf "$abs_path"
+          fi
+      else
+        echo "  ⚠️  Could not extract relative path from: $abs_path"
+      fi
+    fi
+  done
+  
+  # Fix import statements in TypeScript files
+  find "$fn_dir" -name "*.ts" -type f | while read -r ts_file; do
+    if grep -q "file:/" "$ts_file" 2>/dev/null; then
+      echo "  📝 Fixing imports in $(basename "$ts_file")"
+      # Replace absolute file:/ paths with relative paths
+      sed -i.bak -E 's|file:/[^/]+/[^/]+/[^/]+/[^/]+/supabase/functions/|../|g' "$ts_file"
+      # Clean up backup files
+      rm -f "$ts_file.bak"
+    fi
+  done
+}
+
 mkdir -p "$OUTDIR"
 for fn in "${ALL_FUNCS[@]}"; do
   TARGET_DIR="$OUTDIR/$fn"
@@ -191,6 +374,9 @@ for fn in "${ALL_FUNCS[@]}"; do
     rm -rf "$TARGET_DIR"; mkdir -p "$OUTDIR"
     mv "supabase/functions/$fn" "$TARGET_DIR"
   fi
+  
+  # Fix absolute path issues in the downloaded function
+  fix_absolute_paths "$fn"
 done
 
 echo "✅ Done. Functions are in: $OUTDIR"

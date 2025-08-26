@@ -8,7 +8,7 @@ A comprehensive collection of bash scripts for managing Supabase projects across
 Complete database backup, restore, and migration management with smart role bootstrap functionality.
 
 ### 2. Edge Function Management (`pull_edge_functions.sh`)
-Download and manage Supabase Edge Functions from remote projects with secret template generation.
+Download and manage Supabase Edge Functions from remote projects with automatic file organization, path fixing, and secret template generation.
 
 ## 🚀 Quick Start
 
@@ -34,6 +34,9 @@ Download and manage Supabase Edge Functions from remote projects with secret tem
 
 # Download with secret templates
 ./pull_edge_functions.sh --project-ref <PROJECT_REF> --export-secrets
+
+# Fix existing function organization
+./pull_edge_functions.sh --fix-existing
 ```
 
 ## 📋 Requirements
@@ -55,6 +58,8 @@ supabase/
 ├── migrations/        # Generated migrations (auto-created)
 │   └── 00000000000000_roles_bootstrap.sql  # Auto-generated role bootstrap
 ├── functions/         # Edge functions (auto-created)
+│   ├── _shared/       # Shared utilities and types
+│   ├── _graphql/      # GraphQL schema and resolvers
 │   ├── function1/
 │   │   ├── index.ts
 │   │   └── .env.example
@@ -101,6 +106,9 @@ The `pull_edge_functions.sh` script manages Supabase Edge Functions:
 - **Secret Templates**: Automatically generates `.env.example` files
 - **Function Discovery**: Lists all available functions in a project
 - **Flexible Deployment**: Supports custom output directories
+- **Path Organization**: Automatically fixes absolute paths and organizes files into `_shared` and `_graphql` directories
+- **Import Fixing**: Updates TypeScript import statements to use relative paths
+- **Existing Function Fixes**: Use `--fix-existing` to reorganize already downloaded functions
 
 ## 📝 Common Workflows
 
@@ -109,7 +117,7 @@ The `pull_edge_functions.sh` script manages Supabase Edge Functions:
 # 1. Clone production database to local
 ./supabase_backup.sh clone-local --db-url $PROD_DB_URL --yes
 
-# 2. Download edge functions
+# 2. Download edge functions with automatic organization
 ./pull_edge_functions.sh --project-ref $PROJECT_REF --export-secrets
 
 # 3. Start local development
@@ -121,7 +129,7 @@ supabase start
 # 1. Backup current production database
 ./supabase_backup.sh backup --db-url $PROD_DB_URL
 
-# 2. Deploy edge functions
+# 2. Deploy edge functions (with organized structure)
 supabase functions deploy --project-ref $PROJECT_REF
 
 # 3. Apply database migrations
@@ -183,6 +191,53 @@ bash -x ./pull_edge_functions.sh --project-ref <REF> --debug
 - **Backup Files**: Consider encrypting backup files for sensitive data
 - **Secret Templates**: `.env.example` files contain only keys, not values
 - **Role Permissions**: Review custom roles and their permissions before bootstrap
+
+## 📁 File Organization
+
+### Edge Function Structure
+
+The edge function tool automatically organizes downloaded functions into a clean structure:
+
+```
+supabase/functions/
+├── _shared/           # Shared utilities, types, and common code
+│   ├── types.ts       # Common TypeScript types
+│   ├── utils.ts       # Shared utility functions
+│   └── constants.ts   # Shared constants
+├── _graphql/          # GraphQL schema and resolvers
+│   ├── schema.ts      # GraphQL schema definitions
+│   └── resolvers.ts   # GraphQL resolvers
+├── auth/              # Authentication functions
+│   ├── index.ts
+│   └── .env.example
+├── webhook/           # Webhook handlers
+│   ├── index.ts
+│   └── .env.example
+└── api/               # API endpoints
+    ├── index.ts
+    └── .env.example
+```
+
+### Automatic Path Fixing
+
+The tool automatically:
+- **Fixes Absolute Paths**: Converts `file:/absolute/path` references to relative paths
+- **Organizes Shared Code**: Moves common utilities to `_shared` directory
+- **Groups GraphQL Code**: Organizes GraphQL-related files in `_graphql` directory
+- **Updates Imports**: Fixes TypeScript import statements to use relative paths
+- **Maintains Structure**: Preserves function-specific code in individual directories
+
+### Fixing Existing Functions
+
+If you have existing functions with path issues:
+
+```bash
+# Fix organization in existing functions
+./pull_edge_functions.sh --fix-existing
+
+# Fix with custom output directory
+./pull_edge_functions.sh --fix-existing --outdir ./my-functions
+```
 
 ## 🤝 Contributing
 

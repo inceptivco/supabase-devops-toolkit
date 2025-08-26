@@ -1,6 +1,6 @@
 # Edge Function Management Tool (`pull_edge_functions.sh`)
 
-Download and manage Supabase Edge Functions from remote projects with secret template generation.
+Download and manage Supabase Edge Functions from remote projects with automatic file organization, path fixing, and secret template generation.
 
 ## 🚀 Features
 
@@ -11,6 +11,9 @@ Download and manage Supabase Edge Functions from remote projects with secret tem
 - **Overwrite Protection**: Safe overwrite options with confirmation
 - **Robust Parsing**: Handles both JSON and table output formats
 - **Function Discovery**: Lists all available functions in a project
+- **Path Organization**: Automatically fixes absolute paths and organizes files into `_shared` and `_graphql` directories
+- **Import Fixing**: Updates TypeScript import statements to use relative paths
+- **Existing Function Fixes**: Use `--fix-existing` to reorganize already downloaded functions
 
 ## 📖 Usage
 
@@ -28,6 +31,9 @@ Download and manage Supabase Edge Functions from remote projects with secret tem
 
 # Download to custom directory
 ./pull_edge_functions.sh --project-ref <PROJECT_REF> --outdir ./my-functions
+
+# Fix existing function organization
+./pull_edge_functions.sh --fix-existing
 ```
 
 ### Advanced Usage
@@ -75,6 +81,19 @@ Download and manage Supabase Edge Functions from remote projects with secret tem
 ./pull_edge_functions.sh --project-ref <PROJECT_REF> --outdir ./supabase/edge-functions
 ```
 
+#### File Organization
+
+```bash
+# Fix existing functions with path issues
+./pull_edge_functions.sh --fix-existing
+
+# Fix with custom output directory
+./pull_edge_functions.sh --fix-existing --outdir ./my-functions
+
+# Download with automatic organization
+./pull_edge_functions.sh --project-ref <PROJECT_REF> --export-secrets
+```
+
 ## ⚙️ Configuration Options
 
 | Flag | Description | Default |
@@ -86,6 +105,7 @@ Download and manage Supabase Edge Functions from remote projects with secret tem
 | `--yes` | Non-interactive mode (skip confirmations) | `false` |
 | `--export-secrets` | Generate `.env.example` from project secrets | `false` |
 | `--debug` | Enable debug output | `false` |
+| `--fix-existing` | Fix absolute path issues in existing functions (no download) | `false` |
 
 ## 🔧 Smart Features
 
@@ -119,6 +139,15 @@ The script automatically:
 - **Error Handling**: Graceful handling of network and API errors
 - **Validation**: Validates project reference and function names
 
+### Path Organization
+
+The script automatically organizes downloaded functions:
+- **Absolute Path Fixing**: Converts `file:/absolute/path` references to relative paths
+- **Shared Code Organization**: Moves common utilities to `_shared` directory
+- **GraphQL Code Grouping**: Organizes GraphQL-related files in `_graphql` directory
+- **Import Statement Updates**: Fixes TypeScript import statements to use relative paths
+- **Structure Preservation**: Maintains function-specific code in individual directories
+
 ## 📝 Examples
 
 ### Development Setup
@@ -129,13 +158,20 @@ The script automatically:
 
 # This creates:
 # supabase/functions/
-# ├── auth/
+# ├── _shared/           # Shared utilities, types, and common code
+# │   ├── types.ts       # Common TypeScript types
+# │   ├── utils.ts       # Shared utility functions
+# │   └── constants.ts   # Shared constants
+# ├── _graphql/          # GraphQL schema and resolvers
+# │   ├── schema.ts      # GraphQL schema definitions
+# │   └── resolvers.ts   # GraphQL resolvers
+# ├── auth/              # Authentication functions
 # │   ├── index.ts
 # │   └── .env.example
-# ├── webhook/
+# ├── webhook/           # Webhook handlers
 # │   ├── index.ts
 # │   └── .env.example
-# └── api/
+# └── api/               # API endpoints
 #     ├── index.ts
 #     └── .env.example
 # .env.example (root)
@@ -173,6 +209,23 @@ supabase functions deploy --project-ref production-ref
 # 1. Copy .env.example to .env
 # 2. Fill in their local secret values
 # 3. Start development
+```
+
+### Fixing Existing Functions
+
+```bash
+# Fix organization in existing functions
+./pull_edge_functions.sh --fix-existing
+
+# Fix with custom output directory
+./pull_edge_functions.sh --fix-existing --outdir ./my-functions
+
+# The script will:
+# 1. Find all absolute path references
+# 2. Convert them to relative paths
+# 3. Organize shared code into _shared/
+# 4. Group GraphQL code into _graphql/
+# 5. Update import statements
 ```
 
 ## 🛠️ Troubleshooting
@@ -232,21 +285,63 @@ This will show:
 - **Local Secrets**: Never commit `.env` files with actual secret values
 - **Function Code**: Review downloaded function code for security issues
 
+## 🔧 File Organization Details
+
+### Automatic Path Resolution
+
+The script automatically handles complex path scenarios:
+
+1. **Absolute Path Detection**: Finds `file:/absolute/path` references in downloaded functions
+2. **Relative Path Conversion**: Converts absolute paths to relative paths using `../` notation
+3. **Directory Structure Analysis**: Analyzes the actual file structure within absolute paths
+4. **File Movement**: Moves files from absolute paths to their proper relative locations
+5. **Import Statement Updates**: Updates TypeScript import statements to reflect new paths
+
+### Organization Logic
+
+- **`_shared/` Directory**: Contains common utilities, types, and constants used across multiple functions
+- **`_graphql/` Directory**: Contains GraphQL schema definitions, resolvers, and related code
+- **Function Directories**: Individual function code remains in their respective directories
+- **Import Cleanup**: All import statements are updated to use relative paths
+
+### Error Handling
+
+- **Graceful Fallbacks**: If path resolution fails, the script continues with available files
+- **Backup Creation**: Creates backup files during import statement updates
+- **Detailed Logging**: Provides clear feedback about what files are being moved and updated
+
 ## 📁 Output Structure
 
-The script creates the following structure:
+The script creates the following organized structure:
 
 ```
 output-directory/
-├── function1/
+├── _shared/              # Shared utilities and types
+│   ├── types.ts          # Common TypeScript types
+│   ├── utils.ts          # Shared utility functions
+│   ├── constants.ts      # Shared constants
+│   └── index.ts          # Shared exports
+├── _graphql/             # GraphQL schema and resolvers
+│   ├── schema.ts         # GraphQL schema definitions
+│   ├── resolvers.ts      # GraphQL resolvers
+│   └── index.ts          # GraphQL exports
+├── function1/            # Individual function
 │   ├── index.ts          # Function code
 │   ├── package.json      # Dependencies (if any)
 │   └── .env.example      # Secret template (if --export-secrets)
-├── function2/
+├── function2/            # Another function
 │   ├── index.ts
 │   └── .env.example
 └── .env.example          # Root secret template (if --export-secrets)
 ```
+
+### File Organization Benefits
+
+- **Shared Code**: Common utilities and types are centralized in `_shared/`
+- **GraphQL Organization**: GraphQL-related code is grouped in `_graphql/`
+- **Clean Imports**: All import statements use relative paths
+- **Maintainable Structure**: Functions are organized logically
+- **Team Collaboration**: Consistent structure across team members
 
 ## 🔄 Integration with Supabase CLI
 
